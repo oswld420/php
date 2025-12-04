@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Comentarios (Con Menú)</title>
+    <style>
+        body { font-family: sans-serif; margin: 20px; }
+        .container { display: flex; justify-content: space-between; gap: 20px; }
+        .form-section, .table-section, .action-section { flex: 1; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+        th { background-color: #f4f4f4; }
+        button, select, input[type="text"], textarea, input[type="password"] {
+            width: 100%; padding: 8px; margin-bottom: 10px; box-sizing: border-box;
+        }
+        button { margin-top: 0; }
+        .action-section { margin-top: 20px; padding: 20px; border: 1px solid #ccc; border-radius: 5px; }
+    </style>
+</head>
+<body>
+
+    <h1>Gestión de Comentarios</h1>
+
+    <div class="container">
+        <div class="form-section">
+            <h2>Ingresar Comentario</h2>
+            <form id="commentForm">
+                <label for="userName">Nombre:</label>
+                <input type="text" id="userName" required>
+
+                <label for="commentText">Comentario:</label>
+                <textarea id="commentText" required></textarea>
+
+                <label for="userPass">Contraseña (para edición):</label>
+                <input type="password" id="userPass" required>
+
+                <button type="submit">Guardar Comentario</button>
+            </form>
+        </div>
+
+        <div class="table-section">
+            <h2>Listado de Comentarios</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>N°</th>
+                        <th>Nombre</th>
+                        <th>Comentario</th>
+                    </tr>
+                </thead>
+                <tbody id="commentTableBody">
+                    <!-- Las filas se insertarán aquí dinámicamente -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="action-section">
+        <h2>Editar o Eliminar Comentario por Nombre</h2>
+        <label for="selectUserName">Seleccione el Nombre del Usuario:</label>
+        <select id="selectUserName">
+            <option value="">-- Seleccionar Usuario --</option>
+        </select>
+
+        <label for="actionPass">Contraseña:</label>
+        <input type="password" id="actionPass" placeholder="Ingrese la contraseña para confirmar">
+
+        <label for="newCommentText">Nuevo Comentario (solo para editar):</label>
+        <textarea id="newCommentText" placeholder="Deje vacío si solo va a eliminar"></textarea>
+
+        <button onclick="handleEditDelete('edit')">Editar Comentario</button>
+        <button onclick="handleEditDelete('delete')">Eliminar Comentario</button>
+    </div>
+
+    <script>
+        const commentForm = document.getElementById('commentForm');
+        const commentTableBody = document.getElementById('commentTableBody');
+        const selectUserName = document.getElementById('selectUserName');
+        const actionPassInput = document.getElementById('actionPass');
+        const newCommentTextarea = document.getElementById('newCommentText');
+        const STORAGE_KEY = 'commentsData';
+
+        // Cargar datos al iniciar
+        document.addEventListener('DOMContentLoaded', loadComments);
+
+        // Manejar el envío del formulario de ingreso
+        commentForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            const name = document.getElementById('userName').value;
+            const comment = document.getElementById('commentText').value;
+            const password = document.getElementById('userPass').value;
+            saveComment(name, comment, password);
+            commentForm.reset();
+        });
+
+        // Guardar comentario en localStorage
+        function saveComment(name, comment, password) {
+            const comments = getCommentsFromStorage();
+            comments.push({ id: Date.now(), name, comment, password });
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(comments));
+            loadComments();
+        }
+
+        // Obtener comentarios de localStorage
+        function getCommentsFromStorage() {
+            const storedComments = localStorage.getItem(STORAGE_KEY);
+            return storedComments ? JSON.parse(storedComments) : [];
+        }
+
+        // Cargar y mostrar comentarios en la tabla y en el menú desplegable
+        function loadComments() {
+            const comments = getCommentsFromStorage();
+            commentTableBody.innerHTML = '';
+            selectUserName.innerHTML = '<option value="">-- Seleccionar Usuario --</option>'; // Resetear menú
+
+            comments.forEach((item, index) => {
+                // Llenar la tabla
+                const row = commentTableBody.insertRow();
+                row.insertCell(0).textContent = index + 1;
+                row.insertCell(1).textContent = item.name;
+                row.insertCell(2).textContent = item.comment;
+                // Nota: La columna de acciones se ha eliminado de la tabla.
+
+                // Llenar el menú desplegable
+                const option = document.createElement('option');
+                option.value = item.id; // Usamos el ID como valor único
+                option.textContent = item.name + ' (Comentario ' + (index + 1) + ')';
+                selectUserName.appendChild(option);
+            });
+        }
+
+        // Función central para manejar editar/eliminar desde el menú de selección
+        function handleEditDelete(actionType) {
+            const selectedId = selectUserName.value;
+            const inputPass = actionPassInput.value;
+            const newComment = newCommentTextarea.value;
+
+            if (!selectedId) {
+                alert("Por favor, seleccione un usuario de la lista.");
+                return;
+            }
+
+            if (!inputPass) {
+                alert("Por favor, ingrese la contraseña.");
+                return;
+            }
+
+            let comments = getCommentsFromStorage();
+            const targetCommentIndex = comments.findIndex(item => item.id == selectedId); // Usamos == para comparar string con number
+
+            if (targetCommentIndex === -1) return;
+
+            const storedPassword = comments[targetCommentIndex].password;
+
+            if (inputPass === storedPassword) {
+                if (actionType === 'delete') {
+                    if (confirm(`¿Está seguro de eliminar el comentario seleccionado?`)) {
+                        comments.splice(targetCommentIndex, 1); // Eliminar del array
+                        localStorage.setItem(STORAGE_KEY, JSON.stringify(comments));
+                        alert("Comentario eliminado.");
+                    }
+                } else if (actionType === 'edit') {
+                    if (newComment.trim() !== '') {
+                        comments[targetCommentIndex].comment = newComment; // Actualizar comentario
+                        localStorage.setItem(STORAGE_KEY, JSON.stringify(comments));
+                        alert("Comentario actualizado.");
+                    } else {
+                        alert("El nuevo comentario no puede estar vacío para editar.");
+                        return;
+                    }
+                }
+
+                // Limpiar campos y recargar la tabla después de la operación exitosa
+                loadComments();
+                actionPassInput.value = '';
+                newCommentTextarea.value = '';
+                selectUserName.value = '';
+            } else {
+                alert("Contraseña incorrecta.");
+            }
+        }
+    </script>
+</body>
+</html>
