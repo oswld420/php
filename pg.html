@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Comentarios</title>
+    <style>
+        body { font-family: sans-serif; margin: 20px; }
+        .container { display: flex; justify-content: space-between; }
+        .form-section, .table-section { width: 48%; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+        th { background-color: #f4f4f4; }
+        button { margin-top: 10px; }
+        input[type="text"], textarea, input[type="password"] { width: 100%; padding: 8px; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+
+    <h1>Gestión de Comentarios</h1>
+
+    <div class="container">
+        <div class="form-section">
+            <h2>Ingresar Comentario</h2>
+            <form id="commentForm">
+                <label for="userName">Nombre:</label>
+                <input type="text" id="userName" required>
+
+                <label for="commentText">Comentario:</label>
+                <textarea id="commentText" required></textarea>
+
+                <label for="userPass">Contraseña (simple, para edición):</label>
+                <input type="password" id="userPass" required>
+
+                <button type="submit">Guardar Comentario</button>
+            </form>
+        </div>
+
+        <div class="table-section">
+            <h2>Listado de Comentarios</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>N°</th>
+                        <th>Nombre</th>
+                        <th>Comentario</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="commentTableBody">
+                    <!-- Las filas se insertarán aquí dinámicamente -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const commentForm = document.getElementById('commentForm');
+        const commentTableBody = document.getElementById('commentTableBody');
+        const STORAGE_KEY = 'commentsData';
+
+        // Cargar datos al iniciar
+        document.addEventListener('DOMContentLoaded', loadComments);
+
+        // Manejar el envío del formulario
+        commentForm.addEventListener('submit', function (e) {
+            e.preventDefault(); // Prevenir el envío tradicional del formulario
+
+            const name = document.getElementById('userName').value;
+            const comment = document.getElementById('commentText').value;
+            const password = document.getElementById('userPass').value; // Contraseña simple
+
+            saveComment(name, comment, password);
+            commentForm.reset();
+        });
+
+        // Guardar comentario en localStorage
+        function saveComment(name, comment, password) {
+            const comments = getCommentsFromStorage();
+            comments.push({ id: Date.now(), name, comment, password });
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(comments));
+            loadComments(); // Volver a renderizar la tabla
+        }
+
+        // Obtener comentarios de localStorage
+        function getCommentsFromStorage() {
+            const storedComments = localStorage.getItem(STORAGE_KEY);
+            return storedComments ? JSON.parse(storedComments) : [];
+        }
+
+        // Cargar y mostrar comentarios en la tabla
+        function loadComments() {
+            const comments = getCommentsFromStorage();
+            commentTableBody.innerHTML = ''; // Limpiar tabla antes de recargar
+            comments.forEach((item, index) => {
+                const row = commentTableBody.insertRow();
+                // Celda N° (numeración)
+                row.insertCell(0).textContent = index + 1;
+                // Celda Nombre
+                row.insertCell(1).textContent = item.name;
+                // Celda Comentario
+                row.insertCell(2).textContent = item.comment;
+                // Celda Acciones (Botones de editar/eliminar)
+                const actionsCell = row.insertCell(3);
+                const editBtn = document.createElement('button');
+                editBtn.textContent = 'Editar';
+                editBtn.onclick = () => editComment(item.id, item.name, item.password);
+                const deleteBtn = document.createElement('button');
+                deleteBtn.textContent = 'Eliminar';
+                deleteBtn.onclick = () => deleteComment(item.id, item.name, item.password);
+                actionsCell.appendChild(editBtn);
+                actionsCell.appendChild(deleteBtn);
+            });
+        }
+
+        // Editar comentario (simulación con prompt)
+        function editComment(id, name, storedPassword) {
+            const inputPass = prompt(`Para editar el comentario de "${name}", ingrese la contraseña:`);
+            if (inputPass === storedPassword) {
+                const newComment = prompt("Ingrese el nuevo comentario:");
+                if (newComment !== null && newComment.trim() !== '') {
+                    let comments = getCommentsFromStorage();
+                    const index = comments.findIndex(item => item.id === id);
+                    if (index > -1) {
+                        comments[index].comment = newComment;
+                        localStorage.setItem(STORAGE_KEY, JSON.stringify(comments));
+                        loadComments();
+                        alert("Comentario actualizado.");
+                    }
+                }
+            } else {
+                alert("Contraseña incorrecta o acción cancelada.");
+            }
+        }
+
+        // Eliminar comentario (simulación con prompt)
+        function deleteComment(id, name, storedPassword) {
+            const inputPass = prompt(`Para eliminar el comentario de "${name}", ingrese la contraseña:`);
+            if (inputPass === storedPassword) {
+                if (confirm(`¿Está seguro de eliminar el comentario de "${name}"?`)) {
+                    let comments = getCommentsFromStorage();
+                    comments = comments.filter(item => item.id !== id);
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(comments));
+                    loadComments();
+                    alert("Comentario eliminado.");
+                }
+            } else {
+                alert("Contraseña incorrecta o acción cancelada.");
+            }
+        }
+    </script>
+</body>
+</html>
